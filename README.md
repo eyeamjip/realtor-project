@@ -1,6 +1,6 @@
-# Realtor CRM — Keystone
+# Outlaw Realty — Realtor CRM
 
-Single-file HTML prototype of a CRM for a solo real-estate agent. No build step — Tailwind / Lucide / Google Fonts via CDN.
+Single-file HTML prototype of a CRM for Patty Outlaw-Troutman (Outlaw Realty). No build step — Tailwind / Lucide / Google Fonts via CDN.
 
 **Live preview:** https://eyeamjip.github.io/realtor-project/
 
