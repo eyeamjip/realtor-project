@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="theme-color" content="#1B3A6B"/>
 <meta name="description" content="Realtor Agent CRM — prototype"/>
 <title>Outlaw Realty</title>
@@ -34,9 +34,31 @@ tailwind.config = {
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   @media (min-width:1024px){html{font-size:125%}}
-  @media (max-width:1023px){html{font-size:87.5%}}
+  @media (max-width:1023px){html{font-size:100%}}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',sans-serif;background:#F5F7FB;color:#0A1628}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',sans-serif;background:#F5F7FB;color:#0A1628;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+  /* ── MOBILE-SPECIFIC FIXES (< 1024px) ────────── */
+  @media (max-width:1023px){
+    /* Bump tiny hard-coded pixel labels for retina readability (!important beats Tailwind's later-injected utilities) */
+    .text-\[9px\]{font-size:11px!important}
+    .text-\[10px\]{font-size:12px!important}
+    .text-\[11px\]{font-size:13px!important}
+    /* iOS Safari: ≥16px inputs prevent zoom-on-focus */
+    input,select,textarea{font-size:16px!important}
+    /* iOS Safari + Android Chrome: dynamic viewport (URL bar aware) */
+    body.h-screen{height:100dvh}
+    /* Notch / Dynamic Island: extend topbar into safe area */
+    header.h-12{
+      height:calc(3rem + env(safe-area-inset-top));
+      padding-top:env(safe-area-inset-top);
+    }
+    /* Home indicator: bottom tab bar respects iOS safe area */
+    #bottomTabBar{padding-bottom:env(safe-area-inset-bottom)}
+    /* Mobile drawer also clears the notch when open */
+    .sidebar{padding-top:env(safe-area-inset-top)}
+  }
   .display{font-family:'Playfair Display',Georgia,serif;letter-spacing:-.01em}
   .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 
@@ -1515,7 +1537,7 @@ tailwind.config = {
 <div id="mobileOverlay"></div>
 
 <!-- BOTTOM TAB BAR (mobile) -->
-<nav class="lg:hidden flex items-center border-t border-line bg-white shrink-0 z-30">
+<nav id="bottomTabBar" class="lg:hidden flex items-center border-t border-line bg-white shrink-0 z-30">
   <button class="btab active" data-view="overview" onclick="nav('overview')"><i data-lucide="layout-dashboard"></i>Home</button>
   <button class="btab" data-view="leads" onclick="nav('leads')"><i data-lucide="users"></i>Leads</button>
   <button class="btab" data-view="listings" onclick="nav('listings')"><i data-lucide="home"></i>Listings</button>
