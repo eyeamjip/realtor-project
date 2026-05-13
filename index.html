@@ -53,10 +53,15 @@ tailwind.config = {
     header.h-12{
       height:calc(3rem + env(safe-area-inset-top));
       padding-top:env(safe-area-inset-top);
+      /* Shift content right so the fixed 72px sidebar doesn't cover the search bar */
+      padding-left:calc(72px + 1rem)!important;
     }
-    /* Home indicator: bottom tab bar respects iOS safe area */
-    #bottomTabBar{padding-bottom:env(safe-area-inset-bottom)}
-    /* Mobile drawer also clears the notch when open */
+    /* Home indicator: bottom tab bar respects iOS safe area + clear sidebar */
+    #bottomTabBar{
+      padding-bottom:env(safe-area-inset-bottom);
+      padding-left:calc(72px)!important;
+    }
+    /* Mobile sidebar also clears the notch */
     .sidebar{padding-top:env(safe-area-inset-top)}
   }
   .display{font-family:'Playfair Display',Georgia,serif;letter-spacing:-.01em}
@@ -69,25 +74,72 @@ tailwind.config = {
   .sidebar.is-collapsed .nav-item{justify-content:center;padding-left:.5rem;padding-right:.5rem;position:relative}
   .sidebar.is-collapsed .nav-item[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#0F2447;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;z-index:60;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.15)}
 
-  /* Sidebar — mobile: always-visible collapsed icon rail (72px) */
+  /* ── MOBILE SIDEBAR (< 1024px) ─────────────────────────
+     Pattern: fixed icon rail at 72px (always visible).
+     Tap chevron to expand to 280px (overlay with backdrop). */
   @media (max-width:1023px){
     .sidebar{
       width:72px!important;
-      position:relative;
-      transform:none;
+      position:fixed!important;
+      top:0;bottom:0;left:0;
+      z-index:30;
       flex-shrink:0;
+      transform:none;
+      transition:width 240ms cubic-bezier(.4,0,.2,1), box-shadow 200ms;
+      padding-top:env(safe-area-inset-top);
+      box-shadow:1px 0 0 rgba(27,58,107,.06);
     }
-    /* Hide labels & expand-only elements (mirrors .is-collapsed on desktop) */
-    .sidebar .sb-hide{display:none!important}
-    .sidebar .nav-item{
+    /* Shift main right to clear the fixed sidebar */
+    main{margin-left:72px}
+
+    /* Default (collapsed) — labels hidden, icons centered */
+    .sidebar:not(.mobile-expanded) .sb-hide{display:none!important}
+    .sidebar:not(.mobile-expanded) .nav-item{
       justify-content:center;
       padding-left:.5rem;
       padding-right:.5rem;
     }
-    /* Hide the desktop-only collapse chevron */
-    .sb-toggle{display:none}
-    /* Tooltip on tap-hold/long-press for icon labels */
-    .sidebar .nav-item[data-tip]:active::after{
+
+    /* Larger nav icons for thumb-friendly targeting */
+    .sidebar .nav-item svg{width:22px!important;height:22px!important}
+    /* Min tap-target height (Fitts's Law / accessibility) */
+    .sidebar .nav-item{min-height:44px}
+
+    /* Expanded state (chevron tapped) — sidebar overlays content */
+    .sidebar.mobile-expanded{
+      width:280px!important;
+      z-index:55;
+      box-shadow:0 0 40px rgba(0,0,0,.25);
+    }
+    .sidebar.mobile-expanded .sb-hide{display:block!important}
+    .sidebar.mobile-expanded .nav-item{
+      justify-content:flex-start;
+      padding-left:.75rem;
+      padding-right:.75rem;
+    }
+
+    /* Chevron: ride the divider line between P-logo header and first nav icon
+       (calc adds safe-area-inset so it stays aligned on notched devices) */
+    .sb-toggle{top:calc(52px + env(safe-area-inset-top))!important}
+    /* Chevron direction:
+       - Collapsed (default): point → ("tap to expand")
+       - Expanded: point ← ("tap to collapse")
+       Lucide chevron-left renders as ← by default, so we rotate by default and undo when expanded. */
+    .sb-toggle svg{transform:rotate(180deg)!important;transition:transform 220ms cubic-bezier(.4,0,.2,1)}
+    .sidebar.mobile-expanded .sb-toggle svg{transform:rotate(0deg)!important}
+
+    /* Mobile overlay backdrop (visible only when sidebar expanded) */
+    #mobileOverlay{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.42);
+      z-index:50;
+      opacity:0;pointer-events:none;
+      transition:opacity 220ms;
+    }
+    #mobileOverlay.open{opacity:1;pointer-events:auto}
+
+    /* Tooltip on tap-hold for icon labels (accessibility hint) */
+    .sidebar:not(.mobile-expanded) .nav-item[data-tip]:active::after{
       content:attr(data-tip);
       position:absolute;left:calc(100% + 10px);top:50%;
       transform:translateY(-50%);
@@ -97,6 +149,12 @@ tailwind.config = {
       white-space:nowrap;z-index:60;pointer-events:none;
       box-shadow:0 8px 20px rgba(0,0,0,.15);
     }
+  }
+  /* Overlay must never render on desktop */
+  @media (min-width:1024px){#mobileOverlay{display:none!important}}
+  /* Hide bottom tab bar in portrait mobile (sidebar covers nav) — keep it in landscape */
+  @media (max-width:1023px) and (orientation:portrait){
+    #bottomTabBar{display:none!important}
   }
   .sb-toggle{position:absolute;right:-12px;top:91px;width:24px;height:24px;border-radius:999px;background:#fff;border:1px solid #DDE3EE;display:grid;place-items:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer;transition:background 120ms,border-color 120ms}
   .sb-toggle:hover{background:#F5F7FB;border-color:#1B3A6B}
@@ -1529,7 +1587,10 @@ tailwind.config = {
   </main>
 </div><!-- /body flex -->
 
-<!-- BOTTOM TAB BAR (mobile) -->
+<!-- Mobile overlay backdrop (only renders when sidebar is mobile-expanded) -->
+<div id="mobileOverlay"></div>
+
+<!-- BOTTOM TAB BAR (mobile · landscape only) -->
 <nav id="bottomTabBar" class="lg:hidden flex items-center border-t border-line bg-white shrink-0 z-30">
   <button class="btab active" data-view="overview" onclick="nav('overview')"><i data-lucide="layout-dashboard"></i>Home</button>
   <button class="btab" data-view="leads" onclick="nav('leads')"><i data-lucide="users"></i>Leads</button>
@@ -1577,16 +1638,53 @@ window.addEventListener('hashchange', () => {
 const initView = location.hash.replace('#','') || 'overview';
 nav(viewMap[initView] ? initView : 'overview');
 
-// ── Sidebar collapse (desktop only) ──────────────────────
+// ── Sidebar collapse/expand (desktop + mobile, different classes) ──
 (function(){
   const sb = document.querySelector('.sidebar');
   const btn = document.getElementById('sbToggle');
   if (!sb || !btn) return;
   const KEY = 'keystone:sb';
-  if (localStorage.getItem(KEY) === '1') sb.classList.add('is-collapsed');
+  const mqMobile = window.matchMedia('(max-width: 1023px)');
+  // Restore desktop collapsed state on load (mobile never persists state)
+  if (!mqMobile.matches && localStorage.getItem(KEY) === '1') sb.classList.add('is-collapsed');
+  // Clear cross-mode classes when crossing the breakpoint
+  mqMobile.addEventListener('change', e => {
+    if (e.matches) sb.classList.remove('is-collapsed');
+    else { sb.classList.remove('mobile-expanded'); document.getElementById('mobileOverlay')?.classList.remove('open'); document.body.style.overflow=''; }
+  });
+  // Click handler — toggles the right class for each mode
   btn.addEventListener('click', () => {
-    const c = sb.classList.toggle('is-collapsed');
-    localStorage.setItem(KEY, c ? '1' : '0');
+    const overlay = document.getElementById('mobileOverlay');
+    if (mqMobile.matches) {
+      const expanded = sb.classList.toggle('mobile-expanded');
+      overlay?.classList.toggle('open', expanded);
+      document.body.style.overflow = expanded ? 'hidden' : '';
+    } else {
+      const c = sb.classList.toggle('is-collapsed');
+      localStorage.setItem(KEY, c ? '1' : '0');
+    }
+  });
+  // Tap overlay to dismiss expanded sidebar
+  document.getElementById('mobileOverlay')?.addEventListener('click', () => {
+    sb.classList.remove('mobile-expanded');
+    document.getElementById('mobileOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  });
+  // Tap nav item while expanded → navigate AND auto-collapse
+  sb.querySelectorAll('a[data-view]').forEach(el => el.addEventListener('click', () => {
+    if (sb.classList.contains('mobile-expanded')) {
+      sb.classList.remove('mobile-expanded');
+      document.getElementById('mobileOverlay')?.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  }));
+  // Escape closes expanded sidebar on mobile
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && sb.classList.contains('mobile-expanded')) {
+      sb.classList.remove('mobile-expanded');
+      document.getElementById('mobileOverlay')?.classList.remove('open');
+      document.body.style.overflow = '';
+    }
   });
 })();
 
