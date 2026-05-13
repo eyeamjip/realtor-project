@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#1B3A6B"/>
+<meta name="description" content="Realtor Agent CRM — prototype"/>
+<title>Keystone CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { DEFAULT:'#1B3A6B', dark:'#0F2447', mint:'#C9972C', tint:'#E8EEF8', ink:'#0A1628' },
+        surface: { DEFAULT:'#FFFFFF', soft:'#F5F7FB', sunk:'#EAEFF7' },
+        line: '#DDE3EE',
+      },
+      fontFamily: {
+        sans: ['Inter','ui-sans-serif','system-ui','sans-serif'],
+        display: ['"Playfair Display"','Georgia','serif'],
+      },
+      boxShadow: {
+        tile: '0 1px 0 rgba(27,58,107,.04), 0 8px 24px rgba(27,58,107,.07)',
+        pop:  '0 12px 40px rgba(27,58,107,.18)',
+      },
+    },
+  },
+};
+</script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  @media (min-width:1024px){html{font-size:125%}}
+  @media (max-width:1023px){html{font-size:87.5%}}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#F5F7FB;color:#0A1628}
+  .display{font-family:'Playfair Display',Georgia,serif;letter-spacing:-.01em}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+  /* Sidebar */
+  .sidebar{width:232px;transition:width 220ms cubic-bezier(.4,0,.2,1);flex-shrink:0;position:relative}
+  .sidebar.is-collapsed{width:72px}
+  .sidebar.is-collapsed .sb-hide{display:none!important}
+  .sidebar.is-collapsed .nav-item{justify-content:center;padding-left:.5rem;padding-right:.5rem;position:relative}
+  .sidebar.is-collapsed .nav-item[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#0F2447;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;z-index:60;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+  .sb-toggle{position:absolute;right:-12px;top:91px;width:24px;height:24px;border-radius:999px;background:#fff;border:1px solid #DDE3EE;display:grid;place-items:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer;transition:background 120ms,border-color 120ms}
+  .sb-toggle:hover{background:#F5F7FB;border-color:#1B3A6B}
+  .sb-toggle svg{width:14px!important;height:14px!important;color:#64748b;transition:transform 220ms cubic-bezier(.4,0,.2,1)}
+  .sb-toggle:hover svg{color:#1B3A6B}
+  .sidebar.is-collapsed .sb-toggle svg{transform:rotate(180deg)!important}
+
+  /* Nav */
+  .nav-item{display:flex;align-items:center;gap:.6rem;padding:.45rem .75rem;border-radius:8px;font-size:.82rem;font-weight:500;color:#475569;cursor:pointer;text-decoration:none;transition:background 120ms,color 120ms;white-space:nowrap}
+  .nav-item:hover{background:#E8EEF8;color:#1B3A6B}
+  .nav-item.active{background:#1B3A6B;color:#fff}
+  .nav-item.active svg{color:#fff}
+  .nav-label{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;padding:.5rem .75rem .25rem;white-space:nowrap}
+
+  /* Pills */
+  .pill{display:inline-flex;align-items:center;gap:.3rem;padding:.18rem .5rem;border-radius:999px;font-size:.7rem;font-weight:600;background:#EAEFF7;color:#334155;border:1px solid #DDE3EE}
+  .pill.ok{background:#E1F5EE;color:#085041;border-color:#BFE5D6}
+  .pill.warn{background:#FFF6E5;color:#875A00;border-color:#F2DCA0}
+  .pill.danger{background:#FDECEC;color:#8A1F1F;border-color:#F4C7C7}
+  .pill.info{background:#E6EEF7;color:#1F3D6B;border-color:#C8D6EB}
+  .pill.gold{background:#FDF3E3;color:#7A5400;border-color:#F0D8A0}
+
+  /* Avatar */
+  .avatar{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:999px;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0;background:linear-gradient(135deg,#1B3A6B,#C9972C)}
+
+  /* Tile */
+  .tile{background:#fff;border-radius:16px;border:1px solid #DDE3EE;box-shadow:0 1px 0 rgba(27,58,107,.04),0 8px 24px rgba(27,58,107,.07)}
+
+  /* View */
+  .view{display:none}
+  .view.active{display:block}
+
+  /* Table */
+  .data-table{width:100%;border-collapse:collapse}
+  .data-table th{font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;padding:.6rem 1rem;border-bottom:1px solid #DDE3EE;text-align:left;background:#F5F7FB}
+  .data-table td{padding:.75rem 1rem;border-bottom:1px solid #F0F4FA;font-size:.82rem;vertical-align:middle}
+  .data-table tr:last-child td{border-bottom:none}
+  .data-table tbody tr{cursor:pointer;transition:background 100ms}
+  .data-table tbody tr:hover{background:#F5F7FB}
+
+  /* Client tabs */
+  .client-tab{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .75rem;border-bottom:2px solid transparent;font-size:.8rem;font-weight:500;color:#64748b;cursor:pointer;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none;transition:color 120ms,border-color 120ms}
+  .client-tab.active{color:#1B3A6B;border-bottom-color:#1B3A6B;font-weight:600}
+  .client-tab:hover:not(.active){color:#334155}
+
+  /* Kanban */
+  .kanban-col{min-width:220px;flex-shrink:0}
+  .kanban-card{background:#fff;border-radius:12px;border:1px solid #DDE3EE;padding:.75rem;cursor:pointer;transition:box-shadow 150ms,border-color 150ms}
+  .kanban-card:hover{box-shadow:0 4px 16px rgba(27,58,107,.12);border-color:#c8d6eb}
+
+  /* ── CALENDAR ──────────────────────────── */
+  .cal-grid{display:grid;grid-template-columns:60px repeat(7,1fr);position:relative}
+
+  /* Day header */
+  .cal-day{padding:.6rem 0 .55rem;text-align:center;border-left:1px solid #E5EBF4;position:relative}
+  .cal-day:first-child{border-left:none}
+  .cal-day-name{font-size:.6rem;font-weight:700;color:#94a3b8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.25rem}
+  .cal-day-num{font-size:.85rem;font-weight:700;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:1.6rem;height:1.6rem;border-radius:999px;line-height:1}
+  .cal-day.is-weekend .cal-day-name,.cal-day.is-weekend .cal-day-num{color:#94a3b8}
+  .cal-day.is-today .cal-day-name{color:#1B3A6B}
+  .cal-day.is-today .cal-day-num{background:#1B3A6B;color:#fff}
+
+  /* Hour gutter */
+  .cal-hour{height:80px;display:flex;align-items:flex-start;justify-content:flex-end;padding:.5rem .55rem 0 0;font-size:.7rem;color:#94a3b8;font-weight:700;letter-spacing:.02em;border-top:1px solid #E5EBF4;position:relative}
+  .cal-hour:first-of-type{border-top-color:transparent}
+  .cal-hour sup{font-size:.5rem;font-weight:600;margin-left:.12rem;opacity:.7;vertical-align:baseline;text-transform:uppercase;letter-spacing:.04em}
+
+  /* Cells */
+  .cal-cell{height:80px;border-left:1px solid #E5EBF4;border-top:1px solid #E5EBF4;position:relative;transition:background 100ms}
+  .cal-cell:first-of-type{border-top-color:transparent}
+  .cal-cell:hover{background:rgba(27,58,107,.04)}
+  /* 30-min line */
+  .cal-cell::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px dashed #EEF2F9;pointer-events:none}
+  /* Weekend tint (Sun=8n+2 · Sat=8n) */
+  .cal-grid > .cal-cell:nth-child(8n+2),
+  .cal-grid > .cal-cell:nth-child(8n){background:#FAFBFD}
+  .cal-grid > .cal-cell:nth-child(8n+2):hover,
+  .cal-grid > .cal-cell:nth-child(8n):hover{background:#F2F5FA}
+  /* Today col (Mon=8n+3) */
+  .cal-grid > .cal-cell:nth-child(8n+3){background:rgba(27,58,107,.035)}
+  .cal-grid > .cal-cell:nth-child(8n+3):hover{background:rgba(27,58,107,.07)}
+
+  /* Event */
+  .cal-event{position:absolute;left:4px;right:4px;border-radius:8px;font-size:.72rem;font-weight:600;padding:5px 8px;overflow:hidden;cursor:pointer;z-index:2;line-height:1.25;transition:transform 120ms,box-shadow 120ms;display:flex;flex-direction:column;gap:1px}
+  .cal-event:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(27,58,107,.18);z-index:4}
+  .cal-event-time{font-size:.58rem;opacity:.85;font-weight:600;letter-spacing:.02em}
+  .cal-event-title{font-weight:700;font-size:.72rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-event-meta{font-size:.6rem;opacity:.85;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Now indicator */
+  .now-line{position:absolute;left:0;right:0;height:0;border-top:1.5px solid #DC2626;z-index:5;pointer-events:none}
+  .now-line::after{content:'';position:absolute;left:-3px;top:-4px;width:8px;height:8px;border-radius:999px;background:#DC2626;box-shadow:0 0 0 2px #fff}
+  .now-label{position:absolute;left:6px;top:-9px;background:#DC2626;color:#fff;font-size:.55rem;font-weight:700;padding:2px 6px;border-radius:4px;line-height:1.1;letter-spacing:.04em;white-space:nowrap;box-shadow:0 2px 6px rgba(220,38,38,.3)}
+
+  /* Mobile agenda */
+  .cal-mobile{display:none}
+  @media (max-width:1023px){
+    .cal-desktop{display:none!important}
+    .cal-mobile{display:block!important}
+  }
+
+  /* Bottom tab bar (mobile) */
+  .btab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:.5rem .4rem;font-size:.6rem;font-weight:600;color:#64748b;cursor:pointer;border:none;background:none;flex:1}
+  .btab.active{color:#1B3A6B}
+  .btab svg{width:20px;height:20px}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px}
+</style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+
+<!-- TOPBAR -->
+<header class="h-12 bg-white border-b border-line flex items-center px-4 gap-3 shrink-0 z-30">
+  <div class="flex items-center gap-2 lg:hidden">
+    <div class="w-7 h-7 rounded-lg bg-brand flex items-center justify-center">
+      <span class="text-white font-bold text-xs display">K</span>
+    </div>
+  </div>
+  <div class="flex-1 flex items-center gap-2 max-w-sm">
+    <div class="flex items-center gap-2 bg-surface-soft border border-line rounded-lg px-3 py-1.5 w-full cursor-pointer hover:border-brand/40 transition-colors">
+      <i data-lucide="search" class="w-3.5 h-3.5 text-stone-400 shrink-0"></i>
+      <span class="text-xs text-stone-400 flex-1">Search clients, listings…</span>
+      <kbd class="hidden sm:inline text-[10px] text-stone-400 bg-surface-sunk border border-line rounded px-1">⌘K</kbd>
+    </div>
+  </div>
+  <div class="ml-auto flex items-center gap-2">
+    <button class="relative p-1.5 rounded-lg hover:bg-surface-sunk transition-colors">
+      <i data-lucide="bell" class="w-4 h-4 text-stone-500"></i>
+      <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+    </button>
+    <div class="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-brand-mint flex items-center justify-center cursor-pointer">
+      <span class="text-white font-bold text-[10px]">JM</span>
+    </div>
+  </div>
+</header>
+
+<!-- BODY -->
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar hidden lg:flex flex-col bg-white border-r border-line shrink-0 relative">
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 px-4 py-3.5 border-b border-line">
+      <div class="w-7 h-7 rounded-lg bg-brand flex items-center justify-center shrink-0">
+        <span class="text-white font-bold text-xs display">K</span>
+      </div>
+      <div class="sb-hide">
+        <div class="text-sm font-bold text-brand-ink display leading-none">Keystone CRM</div>
+        <div class="text-[10px] text-stone-400 mt-0.5">JP Mananzan · Realtor</div>
+      </div>
+    </div>
+    <!-- Toggle -->
+    <button class="sb-toggle" id="sbToggle">
+      <i data-lucide="chevron-left" class="w-3 h-3 text-stone-500"></i>
+    </button>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+      <div class="nav-label sb-hide">Workspace</div>
+      <a class="nav-item active" data-view="overview" data-tip="Overview" href="#overview">
+        <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Overview</span>
+      </a>
+      <a class="nav-item" data-view="leads" data-tip="Leads" href="#leads">
+        <i data-lucide="users" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Leads & Clients</span>
+      </a>
+      <a class="nav-item" data-view="listings" data-tip="Listings" href="#listings">
+        <i data-lucide="home" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Listings</span>
+      </a>
+      <a class="nav-item" data-view="calendar" data-tip="Calendar" href="#calendar">
+        <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Calendar</span>
+      </a>
+      <div class="nav-label sb-hide mt-2">Finance</div>
+      <a class="nav-item" data-view="forecast" data-tip="Forecast" href="#forecast">
+        <i data-lucide="trending-up" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Commission</span>
+      </a>
+      <div class="nav-label sb-hide mt-2">Admin</div>
+      <a class="nav-item" data-view="activity" data-tip="Activity" href="#activity">
+        <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Activity Log</span>
+      </a>
+      <a class="nav-item" data-view="settings" data-tip="Settings" href="#settings">
+        <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
+        <span class="sb-hide">Settings</span>
+      </a>
+    </nav>
+    <!-- Agent info -->
+    <div class="px-3 py-3 border-t border-line">
+      <div class="flex items-center gap-2.5">
+        <div class="avatar shrink-0"></div>
+        <div class="sb-hide overflow-hidden">
+          <div class="text-xs font-semibold text-brand-ink truncate">JP Mananzan</div>
+          <div class="text-[10px] text-stone-400 truncate">License #SA123456789</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 overflow-y-auto">
+
+    <!-- Breadcrumb -->
+    <div class="hidden lg:flex items-center gap-2 px-6 py-2.5 border-b border-line bg-white/70 backdrop-blur-sm sticky top-0 z-20">
+      <i data-lucide="home" class="w-3.5 h-3.5 text-stone-400"></i>
+      <span class="text-xs text-stone-400">/</span>
+      <span class="text-xs font-semibold text-brand-ink" id="breadcrumb">Overview</span>
+    </div>
+
+    <div class="p-4 sm:p-6 max-w-[2800px] mx-auto">
+
+<!-- ══════════════════════════════════════════
+     VIEW: OVERVIEW
+══════════════════════════════════════════ -->
+<section id="view-overview" class="view active space-y-5">
+
+  <!-- Greeting -->
+  <div class="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <h1 class="display text-2xl font-bold text-brand-ink">Good morning, JP</h1>
+      <p class="text-sm text-stone-500 mt-0.5">Tuesday, May 12 · You have 3 showings today</p>
+    </div>
+    <button onclick="nav('leads')" class="flex items-center gap-2 bg-brand text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Lead
+    </button>
+  </div>
+
+  <!-- Alert banner -->
+  <div class="tile p-3.5 flex items-start gap-3 border-l-4 border-l-amber-400 bg-amber-50/60">
+    <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500 shrink-0 mt-0.5"></i>
+    <div class="text-xs">
+      <span class="font-semibold text-amber-800">3 items need attention:</span>
+      <span class="text-amber-700"> Pre-approval expired for Marcus Webb · Counter-offer response due by 5pm · Odom inspection contingency deadline tomorrow</span>
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="tile p-4">
+      <div class="flex items-center justify-between text-xs text-stone-500">
+        <span class="uppercase tracking-wider font-semibold text-[10px]">Active Listings</span>
+        <span class="pill ok"><i data-lucide="arrow-up-right" class="w-3 h-3"></i>2</span>
+      </div>
+      <div class="mt-3 num text-3xl font-bold text-brand-ink leading-none">7</div>
+      <div class="text-[11px] text-stone-500 mt-1">3 buyers · 4 sellers</div>
+    </div>
+    <div class="tile p-4">
+      <div class="flex items-center justify-between text-xs text-stone-500">
+        <span class="uppercase tracking-wider font-semibold text-[10px]">Pipeline Value</span>
+        <span class="pill info">Active</span>
+      </div>
+      <div class="mt-3 num text-3xl font-bold text-brand-ink leading-none">$4.2M</div>
+      <div class="text-[11px] text-stone-500 mt-1 num">across 8 clients</div>
+    </div>
+    <div class="tile p-4">
+      <div class="flex items-center justify-between text-xs text-stone-500">
+        <span class="uppercase tracking-wider font-semibold text-[10px]">Closings MTD</span>
+        <span class="pill ok"><i data-lucide="check" class="w-3 h-3"></i>On track</span>
+      </div>
+      <div class="mt-3 num text-3xl font-bold text-brand-ink leading-none">2</div>
+      <div class="text-[11px] text-stone-500 mt-1 num">vs 3 last month</div>
+    </div>
+    <div class="tile p-4">
+      <div class="flex items-center justify-between text-xs text-stone-500">
+        <span class="uppercase tracking-wider font-semibold text-[10px]">Commission YTD</span>
+        <span class="pill ok"><i data-lucide="arrow-up-right" class="w-3 h-3"></i>18%</span>
+      </div>
+      <div class="mt-3 num text-3xl font-bold text-brand-ink leading-none">$38.4K</div>
+      <div class="text-[11px] text-stone-500 mt-1 num">goal: $80K</div>
+    </div>
+  </div>
+
+  <!-- Main table + side rail -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+    <!-- Active clients table -->
+    <div class="xl:col-span-2 tile overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-line">
+        <h2 class="font-semibold text-sm text-brand-ink">Active Clients</h2>
+        <button onclick="nav('leads')" class="text-xs text-brand font-semibold hover:underline">View all</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead><tr>
+            <th>Client</th>
+            <th>Type</th>
+            <th>Stage</th>
+            <th>Budget / Price</th>
+            <th>Last Contact</th>
+          </tr></thead>
+          <tbody>
+            <tr onclick="nav('property')">
+              <td><div class="flex items-center gap-2.5"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#1B3A6B,#2d5fa3)">MW</span><div><div class="font-semibold text-xs">Marcus & Diana Webb</div><div class="text-[10px] text-stone-400">Buyer · Scottsdale</div></div></div></td>
+              <td><span class="pill info">Buyer</span></td>
+              <td><span class="pill warn">Offer Made</span></td>
+              <td class="num font-semibold text-xs">$650,000</td>
+              <td class="text-[11px] text-stone-500">Today, 9:14am</td>
+            </tr>
+            <tr onclick="nav('property')">
+              <td><div class="flex items-center gap-2.5"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">PP</span><div><div class="font-semibold text-xs">Priya Patel</div><div class="text-[10px] text-stone-400">Seller · Tempe</div></div></div></td>
+              <td><span class="pill gold">Seller</span></td>
+              <td><span class="pill ok">Active Listing</span></td>
+              <td class="num font-semibold text-xs">$485,000</td>
+              <td class="text-[11px] text-stone-500">Yesterday</td>
+            </tr>
+            <tr onclick="nav('property')">
+              <td><div class="flex items-center gap-2.5"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">JH</span><div><div class="font-semibold text-xs">James Holloway</div><div class="text-[10px] text-stone-400">Buyer · Paradise Valley</div></div></div></td>
+              <td><span class="pill info">Buyer</span></td>
+              <td><span class="pill info">Showing</span></td>
+              <td class="num font-semibold text-xs">$1,200,000</td>
+              <td class="text-[11px] text-stone-500">May 10</td>
+            </tr>
+            <tr onclick="nav('property')">
+              <td><div class="flex items-center gap-2.5"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#b45309,#f59e0b)">SR</span><div><div class="font-semibold text-xs">Sofia Reyes</div><div class="text-[10px] text-stone-400">Buyer · Mesa</div></div></div></td>
+              <td><span class="pill info">Buyer</span></td>
+              <td><span class="pill">Qualified</span></td>
+              <td class="num font-semibold text-xs">$320,000</td>
+              <td class="text-[11px] text-stone-500">May 9</td>
+            </tr>
+            <tr onclick="nav('property')">
+              <td><div class="flex items-center gap-2.5"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#be185d,#ec4899)">RO</span><div><div class="font-semibold text-xs">Ryan & Natasha Odom</div><div class="text-[10px] text-stone-400">Buyer · Chandler</div></div></div></td>
+              <td><span class="pill info">Buyer</span></td>
+              <td><span class="pill warn">Under Contract</span></td>
+              <td class="num font-semibold text-xs">$578,000</td>
+              <td class="text-[11px] text-stone-500">May 8</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Side rail -->
+    <div class="space-y-4">
+
+      <!-- Today's showings -->
+      <div class="tile p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold text-brand-ink">Today's Showings</h3>
+          <span class="pill info">3 scheduled</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="flex items-start gap-2.5 p-2 bg-brand-tint rounded-lg">
+            <div class="text-center shrink-0"><div class="text-[10px] text-brand font-bold">10:00</div><div class="text-[9px] text-stone-400">AM</div></div>
+            <div><div class="text-xs font-semibold">4721 E Camelback Rd</div><div class="text-[10px] text-stone-500">Holloway · $895K · 4BR/3.5BA</div></div>
+          </div>
+          <div class="flex items-start gap-2.5 p-2 bg-surface-soft rounded-lg">
+            <div class="text-center shrink-0"><div class="text-[10px] text-brand font-bold">1:30</div><div class="text-[9px] text-stone-400">PM</div></div>
+            <div><div class="text-xs font-semibold">9801 N Scottsdale Rd</div><div class="text-[10px] text-stone-500">Holloway · $1.1M · 5BR/4BA</div></div>
+          </div>
+          <div class="flex items-start gap-2.5 p-2 bg-surface-soft rounded-lg">
+            <div class="text-center shrink-0"><div class="text-[10px] text-brand font-bold">4:00</div><div class="text-[9px] text-stone-400">PM</div></div>
+            <div><div class="text-xs font-semibold">2218 W Juniper Ave</div><div class="text-[10px] text-stone-500">Reyes · $485K · 3BR/2BA</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New leads -->
+      <div class="tile p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold text-brand-ink">New Leads</h3>
+          <span class="pill warn">2 this week</span>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center gap-2.5">
+            <span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">LC</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-semibold truncate">Linda Chen</div>
+              <div class="text-[10px] text-stone-400">Investor · $400K budget</div>
+            </div>
+            <span class="pill">New</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#166534,#22c55e)">GS</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-semibold truncate">Gerald & Martha Simmons</div>
+              <div class="text-[10px] text-stone-400">Seller · $895K listing</div>
+            </div>
+            <span class="pill">New</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="tile p-4">
+        <h3 class="text-xs font-semibold text-brand-ink mb-3">Recent Activity</h3>
+        <div class="space-y-2.5">
+          <div class="flex items-start gap-2">
+            <span class="avatar w-6 h-6 text-[9px] shrink-0">JP</span>
+            <div class="text-[11px] text-stone-600 leading-snug"><span class="font-semibold">Offer submitted</span> for Webb on 7823 E Camelback Dr <span class="text-stone-400">· 9:14am</span></div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="avatar w-6 h-6 text-[9px] shrink-0" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">PP</span>
+            <div class="text-[11px] text-stone-600 leading-snug"><span class="font-semibold">Price reduction</span> on 2218 W Juniper Ave to $485K <span class="text-stone-400">· Yesterday</span></div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="avatar w-6 h-6 text-[9px] shrink-0" style="background:linear-gradient(135deg,#be185d,#ec4899)">RO</span>
+            <div class="text-[11px] text-stone-600 leading-snug"><span class="font-semibold">Inspection scheduled</span> for Odom — May 14 @ 9am <span class="text-stone-400">· May 10</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: LEADS (KANBAN)
+══════════════════════════════════════════ -->
+<section id="view-leads" class="view space-y-4">
+  <div class="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <h1 class="display text-2xl font-bold text-brand-ink">Leads & Clients</h1>
+      <p class="text-sm text-stone-500 mt-0.5">8 active · $4.2M pipeline</p>
+    </div>
+    <button class="flex items-center gap-2 bg-brand text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Lead
+    </button>
+  </div>
+
+  <!-- Filter strip -->
+  <div class="flex items-center gap-2 flex-wrap">
+    <button class="pill ok cursor-pointer">All Clients</button>
+    <button class="pill cursor-pointer">Buyers</button>
+    <button class="pill cursor-pointer">Sellers</button>
+    <button class="pill cursor-pointer">Investors</button>
+    <button class="pill cursor-pointer">Referrals</button>
+  </div>
+
+  <!-- Kanban board -->
+  <div class="overflow-x-auto pb-4">
+    <div class="flex gap-3.5" style="min-width:1160px">
+
+      <!-- New Inquiry -->
+      <div class="kanban-col">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span class="text-xs font-bold text-stone-600 uppercase tracking-wide">New Inquiry</span>
+          <span class="pill ml-auto">2</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="kanban-card" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">LC</span><div><div class="text-xs font-semibold">Linda Chen</div><div class="text-[10px] text-stone-400">Investor</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">Budget $400K · Multi-family preferred</div>
+            <div class="flex items-center justify-between"><span class="pill">Zillow</span><span class="text-[10px] text-stone-400">2d ago</span></div>
+          </div>
+          <div class="kanban-card" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#166534,#22c55e)">GS</span><div><div class="text-xs font-semibold">Gerald & Martha Simmons</div><div class="text-[10px] text-stone-400">Seller</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">Estate home · 4BR · Est. $895K</div>
+            <div class="flex items-center justify-between"><span class="pill">Referral</span><span class="text-[10px] text-stone-400">1d ago</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Qualified -->
+      <div class="kanban-col">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+          <span class="text-xs font-bold text-stone-600 uppercase tracking-wide">Qualified</span>
+          <span class="pill ml-auto">1 · $320K</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="kanban-card" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#b45309,#f59e0b)">SR</span><div><div class="text-xs font-semibold">Sofia Reyes</div><div class="text-[10px] text-stone-400">Buyer · FTB</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">Pre-approved $320K · Mesa/Gilbert</div>
+            <div class="flex items-center justify-between"><span class="pill info">Pre-approved</span><span class="text-[10px] text-stone-400">3d ago</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Showing -->
+      <div class="kanban-col">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+          <span class="text-xs font-bold text-stone-600 uppercase tracking-wide">Showing</span>
+          <span class="pill ml-auto">2 · $1.85M</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="kanban-card" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">JH</span><div><div class="text-xs font-semibold">James Holloway</div><div class="text-[10px] text-stone-400">Buyer · Luxury</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">Budget $1.2M · 3 tours booked</div>
+            <div class="flex items-center justify-between"><span class="pill">Direct</span><span class="text-[10px] text-stone-400">2d ago</span></div>
+          </div>
+          <div class="kanban-card" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">PP</span><div><div class="text-xs font-semibold">Priya Patel</div><div class="text-[10px] text-stone-400">Seller listing</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">$485K listed · 7 showings</div>
+            <div class="flex items-center justify-between"><span class="pill gold">Active</span><span class="text-[10px] text-stone-400">Today</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Offer Made -->
+      <div class="kanban-col">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span class="text-xs font-bold text-stone-600 uppercase tracking-wide">Offer Made</span>
+          <span class="pill warn ml-auto">1 · $650K</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="kanban-card border-amber-200 bg-amber-50/30" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#1B3A6B,#2d5fa3)">MW</span><div><div class="text-xs font-semibold">Marcus & Diana Webb</div><div class="text-[10px] text-stone-400">Buyer</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-1">Offer: $638K on 7823 E Camelback Dr</div>
+            <div class="text-[10px] text-amber-600 font-semibold mb-2">⚠ Counter-offer due by 5pm</div>
+            <div class="flex items-center justify-between"><span class="pill warn">Countered</span><span class="text-[10px] text-stone-400">Today</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Under Contract -->
+      <div class="kanban-col">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-xs font-bold text-stone-600 uppercase tracking-wide">Under Contract</span>
+          <span class="pill ok ml-auto">1 · $578K</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="kanban-card" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#be185d,#ec4899)">RO</span><div><div class="text-xs font-semibold">Ryan & Natasha Odom</div><div class="text-[10px] text-stone-400">Buyer</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-1">6112 W Peoria Ave · Close: May 30</div>
+            <div class="text-[10px] text-rose-600 font-semibold mb-2">⚠ Inspection deadline: May 14</div>
+            <div class="flex items-center justify-between"><span class="pill ok">In Escrow</span><span class="text-[10px] text-stone-400">May 8</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Closed -->
+      <div class="kanban-col">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full bg-stone-300"></span>
+          <span class="text-xs font-bold text-stone-600 uppercase tracking-wide">Closed</span>
+          <span class="pill ml-auto">2 · $907K</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="kanban-card opacity-80" onclick="nav('property')">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#475569,#94a3b8)">TP</span><div><div class="text-xs font-semibold">Thomas & Evelyn Park</div><div class="text-[10px] text-stone-400">Seller</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">Sold: $524K · Closed May 2</div>
+            <div class="flex items-center justify-between"><span class="pill ok">Closed</span><span class="text-[10px] text-stone-400">May 2</span></div>
+          </div>
+          <div class="kanban-card opacity-80">
+            <div class="flex items-center gap-2 mb-2"><span class="avatar w-7 h-7 text-[10px]" style="background:linear-gradient(135deg,#92400e,#d97706)">BK</span><div><div class="text-xs font-semibold">Brenda Kim</div><div class="text-[10px] text-stone-400">Buyer</div></div></div>
+            <div class="text-[10px] text-stone-500 mb-2">Bought: $383K · Closed Apr 18</div>
+            <div class="flex items-center justify-between"><span class="pill ok">Closed</span><span class="text-[10px] text-stone-400">Apr 18</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Funnel footer -->
+  <div class="tile p-4 flex items-center gap-6 flex-wrap">
+    <div class="text-center"><div class="num text-lg font-bold text-brand-ink">14</div><div class="text-[10px] text-stone-400 uppercase tracking-wide">Total Leads</div></div>
+    <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300"></i>
+    <div class="text-center"><div class="num text-lg font-bold text-brand-ink">8</div><div class="text-[10px] text-stone-400 uppercase tracking-wide">Qualified</div></div>
+    <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300"></i>
+    <div class="text-center"><div class="num text-lg font-bold text-brand-ink">5</div><div class="text-[10px] text-stone-400 uppercase tracking-wide">Active Deals</div></div>
+    <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300"></i>
+    <div class="text-center"><div class="num text-lg font-bold text-emerald-600">2</div><div class="text-[10px] text-stone-400 uppercase tracking-wide">Closed MTD</div></div>
+    <div class="ml-auto text-right"><div class="num text-lg font-bold text-brand-mint">$38.4K</div><div class="text-[10px] text-stone-400 uppercase tracking-wide">Commission MTD</div></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: LISTINGS
+══════════════════════════════════════════ -->
+<section id="view-listings" class="view space-y-4">
+  <div class="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <h1 class="display text-2xl font-bold text-brand-ink">Listings</h1>
+      <p class="text-sm text-stone-500 mt-0.5">5 properties · $3.74M total value</p>
+    </div>
+    <button class="flex items-center gap-2 bg-brand text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Listing
+    </button>
+  </div>
+
+  <div class="tile">
+    <div class="flex items-center gap-2 px-4 py-3 border-b border-line flex-wrap">
+      <div class="flex items-center gap-2 bg-surface-soft border border-line rounded-lg px-3 py-1.5 flex-1 min-w-[180px] max-w-xs">
+        <i data-lucide="search" class="w-3.5 h-3.5 text-stone-400"></i>
+        <input type="text" placeholder="Search address or client…" class="bg-transparent text-xs outline-none w-full text-stone-700 placeholder-stone-400"/>
+      </div>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <button class="pill ok cursor-pointer">All</button>
+        <button class="pill cursor-pointer">Active</button>
+        <button class="pill cursor-pointer">Pending</button>
+        <button class="pill cursor-pointer">Sold</button>
+        <button class="pill cursor-pointer">Buyer Searches</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>Address</th>
+          <th>Type</th>
+          <th>Price</th>
+          <th>Beds/Bath</th>
+          <th>Status</th>
+          <th>Days on Market</th>
+          <th>Agent Side</th>
+        </tr></thead>
+        <tbody>
+          <tr onclick="nav('property')">
+            <td><div class="font-semibold text-xs">4721 E Camelback Rd</div><div class="text-[10px] text-stone-400">Scottsdale, AZ 85251</div></td>
+            <td class="text-xs">Single Family</td>
+            <td class="num font-semibold text-xs">$895,000</td>
+            <td class="text-xs">4 / 3.5</td>
+            <td><span class="pill ok">Active</span></td>
+            <td class="num text-xs text-stone-500">18</td>
+            <td><span class="pill gold">Listing</span></td>
+          </tr>
+          <tr onclick="nav('property')">
+            <td><div class="font-semibold text-xs">2218 W Juniper Ave</div><div class="text-[10px] text-stone-400">Tempe, AZ 85282</div></td>
+            <td class="text-xs">Single Family</td>
+            <td class="num font-semibold text-xs">$485,000</td>
+            <td class="text-xs">3 / 2</td>
+            <td><span class="pill ok">Active</span></td>
+            <td class="num text-xs text-stone-500">31</td>
+            <td><span class="pill gold">Listing</span></td>
+          </tr>
+          <tr onclick="nav('property')">
+            <td><div class="font-semibold text-xs">9834 N 68th St</div><div class="text-[10px] text-stone-400">Paradise Valley, AZ 85253</div></td>
+            <td class="text-xs">Luxury Estate</td>
+            <td class="num font-semibold text-xs">$1,250,000</td>
+            <td class="text-xs">5 / 4</td>
+            <td><span class="pill warn">Pending</span></td>
+            <td class="num text-xs text-stone-500">12</td>
+            <td><span class="pill info">Buyer</span></td>
+          </tr>
+          <tr onclick="nav('property')">
+            <td><div class="font-semibold text-xs">6112 W Peoria Ave</div><div class="text-[10px] text-stone-400">Chandler, AZ 85226</div></td>
+            <td class="text-xs">Townhouse</td>
+            <td class="num font-semibold text-xs">$578,000</td>
+            <td class="text-xs">3 / 2.5</td>
+            <td><span class="pill warn">Under Contract</span></td>
+            <td class="num text-xs text-stone-500">9</td>
+            <td><span class="pill info">Buyer</span></td>
+          </tr>
+          <tr onclick="nav('property')">
+            <td><div class="font-semibold text-xs">1102 S Greenfield Rd</div><div class="text-[10px] text-stone-400">Mesa, AZ 85206</div></td>
+            <td class="text-xs">Single Family</td>
+            <td class="num font-semibold text-xs">$362,000</td>
+            <td class="text-xs">3 / 2</td>
+            <td><span class="pill text-stone-400">Sold</span></td>
+            <td class="num text-xs text-stone-400">24</td>
+            <td><span class="pill info">Buyer</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="px-5 py-3 border-t border-line flex items-center justify-between">
+      <span class="text-xs text-stone-500">Showing 5 of 5</span>
+      <div class="flex items-center gap-1">
+        <button class="p-1 rounded hover:bg-surface-sunk"><i data-lucide="chevron-left" class="w-3.5 h-3.5 text-stone-400"></i></button>
+        <span class="text-xs font-semibold px-2 py-0.5 bg-brand text-white rounded">1</span>
+        <button class="p-1 rounded hover:bg-surface-sunk"><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-stone-400"></i></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: PROPERTY DETAIL
+══════════════════════════════════════════ -->
+<section id="view-property" class="view space-y-4">
+  <button onclick="nav('listings')" class="flex items-center gap-1.5 text-xs text-brand font-semibold hover:underline">
+    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Back to Listings
+  </button>
+
+  <!-- Banner -->
+  <div class="tile overflow-hidden">
+    <div class="h-24 bg-gradient-to-r from-brand to-brand-dark relative">
+      <div class="absolute bottom-0 left-6 translate-y-1/2 flex items-end gap-4">
+        <div class="w-16 h-16 rounded-2xl border-4 border-white bg-brand-tint flex items-center justify-center shadow-pop">
+          <i data-lucide="home" class="w-7 h-7 text-brand"></i>
+        </div>
+      </div>
+      <div class="absolute top-4 right-5 flex items-center gap-2">
+        <span class="pill ok bg-white/20 text-white border-white/30">Active Listing</span>
+        <button class="p-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"><i data-lucide="share-2" class="w-3.5 h-3.5 text-white"></i></button>
+      </div>
+    </div>
+    <div class="pt-10 px-6 pb-4">
+      <div class="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="display text-xl font-bold text-brand-ink">4721 E Camelback Rd</h2>
+          <p class="text-sm text-stone-500">Scottsdale, AZ 85251 · MLS #AZ9823741</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-surface-soft border border-line rounded-lg hover:border-brand/40 transition-colors">
+            <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Edit
+          </button>
+          <button onclick="nav('leads')" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors">
+            <i data-lucide="user" class="w-3.5 h-3.5"></i> View Client
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="flex items-center gap-4 mt-3 flex-wrap">
+        <div class="text-center"><div class="num font-bold text-brand-ink">$895,000</div><div class="text-[10px] text-stone-400">List Price</div></div>
+        <div class="w-px h-8 bg-line"></div>
+        <div class="text-center"><div class="font-bold text-brand-ink">4</div><div class="text-[10px] text-stone-400">Beds</div></div>
+        <div class="text-center"><div class="font-bold text-brand-ink">3.5</div><div class="text-[10px] text-stone-400">Baths</div></div>
+        <div class="text-center"><div class="num font-bold text-brand-ink">3,240</div><div class="text-[10px] text-stone-400">Sq Ft</div></div>
+        <div class="text-center"><div class="num font-bold text-brand-ink">18</div><div class="text-[10px] text-stone-400">DOM</div></div>
+        <div class="w-px h-8 bg-line"></div>
+        <div class="text-center"><div class="num font-bold text-brand-mint">$26,850</div><div class="text-[10px] text-stone-400">Est. Commission (3%)</div></div>
+      </div>
+    </div>
+
+    <!-- Tab nav -->
+    <div class="border-t border-line px-6 overflow-x-auto flex gap-1" id="propTabs">
+      <button class="client-tab active" data-tab="prop-overview">Overview</button>
+      <button class="client-tab" data-tab="prop-showings">Showings</button>
+      <button class="client-tab" data-tab="prop-offers">Offers</button>
+      <button class="client-tab" data-tab="prop-docs">Documents</button>
+      <button class="client-tab" data-tab="prop-notes">Notes</button>
+    </div>
+  </div>
+
+  <!-- Tab panels -->
+  <div id="prop-overview" class="prop-panel grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="tile p-4">
+      <h3 class="text-xs font-semibold text-brand-ink mb-3 flex items-center gap-2"><i data-lucide="info" class="w-3.5 h-3.5 text-brand"></i> Property Details</h3>
+      <dl class="space-y-2 text-xs">
+        <div class="flex justify-between py-1 border-b border-line/50"><dt class="text-stone-500">Property Type</dt><dd class="font-semibold">Single Family</dd></div>
+        <div class="flex justify-between py-1 border-b border-line/50"><dt class="text-stone-500">Year Built</dt><dd class="font-semibold">2008</dd></div>
+        <div class="flex justify-between py-1 border-b border-line/50"><dt class="text-stone-500">Lot Size</dt><dd class="font-semibold num">9,800 sq ft</dd></div>
+        <div class="flex justify-between py-1 border-b border-line/50"><dt class="text-stone-500">Garage</dt><dd class="font-semibold">3-car attached</dd></div>
+        <div class="flex justify-between py-1 border-b border-line/50"><dt class="text-stone-500">Pool</dt><dd class="font-semibold">Yes — heated</dd></div>
+        <div class="flex justify-between py-1"><dt class="text-stone-500">HOA</dt><dd class="font-semibold num">$185/mo</dd></div>
+      </dl>
+    </div>
+    <div class="tile p-4">
+      <h3 class="text-xs font-semibold text-brand-ink mb-3 flex items-center gap-2"><i data-lucide="user" class="w-3.5 h-3.5 text-brand"></i> Seller Info</h3>
+      <div class="flex items-center gap-3 mb-3">
+        <span class="avatar" style="background:linear-gradient(135deg,#166534,#22c55e)">GS</span>
+        <div><div class="text-xs font-semibold">Gerald & Martha Simmons</div><div class="text-[10px] text-stone-400">Owner · Listing client</div></div>
+      </div>
+      <div class="flex gap-2">
+        <button class="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 border border-line rounded-lg hover:bg-surface-sunk transition-colors"><i data-lucide="phone" class="w-3.5 h-3.5 text-brand"></i> Call</button>
+        <button class="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 border border-line rounded-lg hover:bg-surface-sunk transition-colors"><i data-lucide="message-square" class="w-3.5 h-3.5 text-brand"></i> Text</button>
+        <button class="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 border border-line rounded-lg hover:bg-surface-sunk transition-colors"><i data-lucide="mail" class="w-3.5 h-3.5 text-brand"></i> Email</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="prop-showings" class="prop-panel hidden tile p-4">
+    <h3 class="text-xs font-semibold text-brand-ink mb-3">Showing History</h3>
+    <div class="space-y-2">
+      <div class="flex items-center gap-3 py-2 border-b border-line/50 text-xs">
+        <span class="text-stone-400 w-28 shrink-0">May 12 · 10:00am</span>
+        <div class="flex-1"><span class="font-semibold">James Holloway</span> <span class="text-stone-500">— with agent Sarah L.</span></div>
+        <span class="pill info">Interested</span>
+      </div>
+      <div class="flex items-center gap-3 py-2 border-b border-line/50 text-xs">
+        <span class="text-stone-400 w-28 shrink-0">May 10 · 2:00pm</span>
+        <div class="flex-1"><span class="font-semibold">Unrepresented buyer</span> <span class="text-stone-500">— open house</span></div>
+        <span class="pill">No feedback</span>
+      </div>
+      <div class="flex items-center gap-3 py-2 text-xs">
+        <span class="text-stone-400 w-28 shrink-0">May 7 · 11:30am</span>
+        <div class="flex-1"><span class="font-semibold">Marcus & Diana Webb</span> <span class="text-stone-500">— private showing</span></div>
+        <span class="pill warn">Made offer</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="prop-offers" class="prop-panel hidden tile p-4">
+    <h3 class="text-xs font-semibold text-brand-ink mb-3">Offers</h3>
+    <div class="space-y-3">
+      <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-semibold">Marcus & Diana Webb</span>
+          <span class="pill warn">Countered</span>
+        </div>
+        <div class="num text-lg font-bold text-brand-ink">$638,000</div>
+        <div class="text-[10px] text-stone-500 mt-0.5">Submitted May 12 · Close June 15 · Conv. financing</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="prop-docs" class="prop-panel hidden tile p-4">
+    <h3 class="text-xs font-semibold text-brand-ink mb-3">Documents</h3>
+    <div class="space-y-2 text-xs">
+      <div class="flex items-center gap-3 py-2 border-b border-line/50"><i data-lucide="file-text" class="w-4 h-4 text-brand shrink-0"></i><span class="flex-1 font-medium">Listing Agreement</span><span class="text-stone-400">Apr 24</span></div>
+      <div class="flex items-center gap-3 py-2 border-b border-line/50"><i data-lucide="file-text" class="w-4 h-4 text-brand shrink-0"></i><span class="flex-1 font-medium">Property Disclosure</span><span class="text-stone-400">Apr 24</span></div>
+      <div class="flex items-center gap-3 py-2"><i data-lucide="file-text" class="w-4 h-4 text-brand shrink-0"></i><span class="flex-1 font-medium">HOA Docs</span><span class="text-stone-400">Apr 26</span></div>
+    </div>
+  </div>
+
+  <div id="prop-notes" class="prop-panel hidden tile p-4">
+    <h3 class="text-xs font-semibold text-brand-ink mb-3">Notes</h3>
+    <div class="space-y-3">
+      <div class="p-3 bg-brand-tint rounded-xl border border-brand/20">
+        <div class="flex items-center gap-2 mb-1"><span class="avatar w-6 h-6 text-[9px]">JP</span><span class="text-xs font-semibold">JP Mananzan</span><span class="text-[10px] text-stone-400 ml-auto">Today</span></div>
+        <p class="text-xs text-stone-600">Sellers motivated — relocating to Portland by end of June. Will accept slightly under asking if quick close. Don't push back on inspection requests.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: CALENDAR
+══════════════════════════════════════════ -->
+<section id="view-calendar" class="view space-y-4">
+
+  <!-- ─── HEADER STRIP ───────────────────────── -->
+  <div class="flex items-start justify-between gap-3 flex-wrap">
+    <div>
+      <h1 class="display text-2xl font-bold text-brand-ink leading-tight">May 11 – 17, 2026</h1>
+      <p class="text-xs text-stone-500 mt-1"><span class="font-semibold text-brand-ink">8 events</span> this week · <span class="font-semibold text-brand">3 today</span></p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <!-- Prev / Today / Next as one segmented control -->
+      <div class="flex items-center bg-white border border-line rounded-lg overflow-hidden shadow-sm">
+        <button class="px-2 py-1.5 hover:bg-surface-sunk transition-colors" aria-label="Previous week"><i data-lucide="chevron-left" class="w-3.5 h-3.5 text-stone-500"></i></button>
+        <button class="px-3 py-1.5 text-xs font-semibold border-l border-r border-line hover:bg-surface-sunk transition-colors">Today</button>
+        <button class="px-2 py-1.5 hover:bg-surface-sunk transition-colors" aria-label="Next week"><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-stone-500"></i></button>
+      </div>
+      <!-- View switcher -->
+      <div class="hidden sm:flex border border-line rounded-lg overflow-hidden text-xs font-semibold bg-white shadow-sm">
+        <button class="px-3 py-1.5 hover:bg-surface-sunk transition-colors">Day</button>
+        <button class="px-3 py-1.5 bg-brand text-white">Week</button>
+        <button class="px-3 py-1.5 hover:bg-surface-sunk transition-colors">Month</button>
+      </div>
+      <!-- Primary CTA -->
+      <button class="flex items-center gap-1.5 bg-brand text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-dark transition-colors shadow-sm">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">New Event</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── DESKTOP: WEEK GRID + RAIL ──────────── -->
+  <div class="cal-desktop grid grid-cols-1 xl:grid-cols-[1fr_220px] gap-3">
+
+    <!-- Calendar tile -->
+    <div class="tile overflow-hidden">
+      <!-- Day header row -->
+      <div class="cal-grid border-b border-line bg-white">
+        <div></div>
+        <div class="cal-day is-weekend"><div class="cal-day-name">Sun</div><div class="cal-day-num">11</div></div>
+        <div class="cal-day is-today"><div class="cal-day-name">Mon</div><div class="cal-day-num">12</div></div>
+        <div class="cal-day"><div class="cal-day-name">Tue</div><div class="cal-day-num">13</div></div>
+        <div class="cal-day"><div class="cal-day-name">Wed</div><div class="cal-day-num">14</div></div>
+        <div class="cal-day"><div class="cal-day-name">Thu</div><div class="cal-day-num">15</div></div>
+        <div class="cal-day"><div class="cal-day-name">Fri</div><div class="cal-day-num">16</div></div>
+        <div class="cal-day is-weekend"><div class="cal-day-name">Sat</div><div class="cal-day-num">17</div></div>
+      </div>
+
+      <!-- Hours grid (8am–6pm) -->
+      <div class="cal-grid">
+        <!-- 8am -->
+        <div class="cal-hour" style="grid-column:1;grid-row:1">8<sup>am</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:1">
+          <div class="cal-event bg-amber-50 text-amber-900 border-l-[3px] border-amber-500" style="top:0;height:80px">
+            <div class="cal-event-time">8:00 AM</div>
+            <div class="cal-event-title">Open House</div>
+            <div class="cal-event-meta">Patel · 2218 Juniper</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:3;grid-row:1">
+          <div class="cal-event bg-brand text-white" style="top:0;height:160px">
+            <div class="cal-event-time">8:00 – 10:00 AM</div>
+            <div class="cal-event-title">Holloway Showing</div>
+            <div class="cal-event-meta">4721 E Camelback</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:4;grid-row:1"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:1">
+          <div class="cal-event bg-rose-50 text-rose-900 border-l-[3px] border-rose-500" style="top:0;height:80px">
+            <div class="cal-event-time">8:00 AM</div>
+            <div class="cal-event-title">Odom Inspection</div>
+            <div class="cal-event-meta">6112 W Peoria</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:6;grid-row:1"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:1"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:1">
+          <div class="cal-event bg-amber-50 text-amber-900 border-l-[3px] border-amber-500" style="top:0;height:80px">
+            <div class="cal-event-time">8:00 AM</div>
+            <div class="cal-event-title">Open House</div>
+            <div class="cal-event-meta">4721 Camelback</div>
+          </div>
+        </div>
+
+        <!-- 9am -->
+        <div class="cal-hour" style="grid-column:1;grid-row:2">9<sup>am</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:2"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:2"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:2"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:2"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:2"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:2"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:2"></div>
+
+        <!-- 10am -->
+        <div class="cal-hour" style="grid-column:1;grid-row:3">10<sup>am</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:3"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:3">
+          <!-- Now line @ 10:30 AM -->
+          <div class="now-line" style="top:40px">
+            <span class="now-label">10:30 AM</span>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:4;grid-row:3"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:3"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:3"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:3"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:3"></div>
+
+        <!-- 11am -->
+        <div class="cal-hour" style="grid-column:1;grid-row:4">11<sup>am</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:4"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:4"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:4"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:4"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:4">
+          <div class="cal-event bg-violet-50 text-violet-900 border-l-[3px] border-violet-500" style="top:0;height:80px">
+            <div class="cal-event-time">11:00 AM</div>
+            <div class="cal-event-title">Reyes Tour #2</div>
+            <div class="cal-event-meta">2218 W Juniper</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:7;grid-row:4"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:4"></div>
+
+        <!-- 12pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:5">12<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:5"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:5"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:5"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:5"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:5"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:5"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:5"></div>
+
+        <!-- 1pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:6">1<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:6"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:6">
+          <div class="cal-event bg-brand text-white" style="top:40px;height:120px">
+            <div class="cal-event-time">1:30 – 3:00 PM</div>
+            <div class="cal-event-title">Holloway Showing</div>
+            <div class="cal-event-meta">9801 N Scottsdale</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:4;grid-row:6"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:6"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:6"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:6"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:6"></div>
+
+        <!-- 2pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:7">2<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:7"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:7"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:7"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:7"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:7"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:7"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:7"></div>
+
+        <!-- 3pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:8">3<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:8"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:8"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:8">
+          <div class="cal-event bg-emerald-50 text-emerald-900 border-l-[3px] border-emerald-500" style="top:0;height:80px">
+            <div class="cal-event-time">3:00 PM</div>
+            <div class="cal-event-title">Webb Counteroffer</div>
+            <div class="cal-event-meta">Call w/ listing agent</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:5;grid-row:8"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:8"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:8"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:8"></div>
+
+        <!-- 4pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:9">4<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:9"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:9">
+          <div class="cal-event bg-brand text-white" style="top:0;height:120px">
+            <div class="cal-event-time">4:00 – 5:30 PM</div>
+            <div class="cal-event-title">Reyes Showing</div>
+            <div class="cal-event-meta">2218 W Juniper</div>
+          </div>
+        </div>
+        <div class="cal-cell" style="grid-column:4;grid-row:9"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:9"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:9"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:9"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:9"></div>
+
+        <!-- 5pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:10">5<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:10"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:10"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:10"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:10"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:10"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:10"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:10"></div>
+
+        <!-- 6pm -->
+        <div class="cal-hour" style="grid-column:1;grid-row:11">6<sup>pm</sup></div>
+        <div class="cal-cell" style="grid-column:2;grid-row:11"></div>
+        <div class="cal-cell" style="grid-column:3;grid-row:11"></div>
+        <div class="cal-cell" style="grid-column:4;grid-row:11"></div>
+        <div class="cal-cell" style="grid-column:5;grid-row:11"></div>
+        <div class="cal-cell" style="grid-column:6;grid-row:11"></div>
+        <div class="cal-cell" style="grid-column:7;grid-row:11"></div>
+        <div class="cal-cell" style="grid-column:8;grid-row:11"></div>
+      </div>
+    </div>
+
+    <!-- Side rail -->
+    <div class="space-y-3">
+      <!-- Legend -->
+      <div class="tile p-3.5">
+        <h3 class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2.5">Event Types</h3>
+        <div class="space-y-1.5 text-[11px] text-stone-600">
+          <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-brand"></span><span>Showing</span></div>
+          <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border-l-2 border-amber-500"></span><span>Open House</span></div>
+          <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-violet-100 border-l-2 border-violet-500"></span><span>Tour</span></div>
+          <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-rose-100 border-l-2 border-rose-500"></span><span>Inspection</span></div>
+          <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border-l-2 border-emerald-500"></span><span>Call / Offer</span></div>
+        </div>
+      </div>
+
+      <!-- Upcoming tasks -->
+      <div class="tile p-3.5">
+        <h3 class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2.5">Upcoming Tasks</h3>
+        <div class="space-y-1.5">
+          <label class="flex items-start gap-2 p-2 bg-rose-50 border border-rose-200 rounded-lg cursor-pointer hover:bg-rose-100/60 transition-colors">
+            <input type="checkbox" class="mt-0.5 accent-brand shrink-0"/>
+            <div class="min-w-0"><div class="text-[11px] font-semibold text-rose-800 leading-tight">Webb counter-offer</div><div class="text-[10px] text-rose-500 mt-0.5">Due today 5pm</div></div>
+          </label>
+          <label class="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-100/60 transition-colors">
+            <input type="checkbox" class="mt-0.5 accent-brand shrink-0"/>
+            <div class="min-w-0"><div class="text-[11px] font-semibold text-amber-800 leading-tight">Odom contingency</div><div class="text-[10px] text-amber-600 mt-0.5">Due May 14</div></div>
+          </label>
+          <label class="flex items-start gap-2 p-2 bg-surface-soft border border-line rounded-lg cursor-pointer hover:bg-surface-sunk transition-colors">
+            <input type="checkbox" class="mt-0.5 accent-brand shrink-0"/>
+            <div class="min-w-0"><div class="text-[11px] font-semibold leading-tight">Follow-up: Linda Chen</div><div class="text-[10px] text-stone-400 mt-0.5">May 15</div></div>
+          </label>
+          <label class="flex items-start gap-2 p-2 bg-surface-soft border border-line rounded-lg cursor-pointer hover:bg-surface-sunk transition-colors">
+            <input type="checkbox" class="mt-0.5 accent-brand shrink-0"/>
+            <div class="min-w-0"><div class="text-[11px] font-semibold leading-tight">CMA for Simmons</div><div class="text-[10px] text-stone-400 mt-0.5">May 16</div></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Key dates -->
+      <div class="tile p-3.5">
+        <h3 class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2.5">Key Dates</h3>
+        <div class="space-y-1.5 text-[11px]">
+          <div class="flex items-center justify-between py-1 border-b border-line/60"><span class="text-stone-500 truncate pr-2">Odom inspection</span><span class="font-bold text-rose-600 shrink-0">May 14</span></div>
+          <div class="flex items-center justify-between py-1 border-b border-line/60"><span class="text-stone-500 truncate pr-2">Holloway tour</span><span class="font-bold text-stone-700 shrink-0">May 15</span></div>
+          <div class="flex items-center justify-between py-1 border-b border-line/60"><span class="text-stone-500 truncate pr-2">Patel open house</span><span class="font-bold text-stone-700 shrink-0">May 17</span></div>
+          <div class="flex items-center justify-between py-1"><span class="text-stone-500 truncate pr-2">Odom closing</span><span class="font-bold text-emerald-600 shrink-0">May 30</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /desktop -->
+
+  <!-- ─── MOBILE: AGENDA LIST ──────────────────────── -->
+  <div class="cal-mobile space-y-4">
+    <!-- Today -->
+    <div>
+      <div class="flex items-baseline gap-2 mb-2 px-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-brand">Today</span>
+        <span class="display text-lg font-bold text-brand-ink leading-none">Mon · May 12</span>
+      </div>
+      <div class="tile divide-y divide-line/60 overflow-hidden">
+        <div class="flex items-center gap-3 p-3">
+          <div class="text-center w-12 shrink-0"><div class="text-xs font-bold text-brand-ink num">8:00</div><div class="text-[9px] text-stone-400 -mt-0.5">AM</div></div>
+          <div class="w-1 h-10 rounded-full bg-brand shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Holloway Showing</div>
+            <div class="text-[11px] text-stone-500 truncate">4721 E Camelback · 2hr</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 shrink-0"></i>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-rose-50/40">
+          <div class="text-center w-12 shrink-0"><div class="text-xs font-bold text-rose-700 num">10:30</div><div class="text-[9px] text-rose-500 -mt-0.5 font-semibold">NOW</div></div>
+          <div class="w-1 h-10 rounded-full bg-rose-500 shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Free until 1:30 PM</div>
+            <div class="text-[11px] text-stone-500">Next: Holloway Showing #2</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-3">
+          <div class="text-center w-12 shrink-0"><div class="text-xs font-bold text-brand-ink num">1:30</div><div class="text-[9px] text-stone-400 -mt-0.5">PM</div></div>
+          <div class="w-1 h-10 rounded-full bg-brand shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Holloway Showing</div>
+            <div class="text-[11px] text-stone-500 truncate">9801 N Scottsdale · 1.5hr</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 shrink-0"></i>
+        </div>
+        <div class="flex items-center gap-3 p-3">
+          <div class="text-center w-12 shrink-0"><div class="text-xs font-bold text-brand-ink num">4:00</div><div class="text-[9px] text-stone-400 -mt-0.5">PM</div></div>
+          <div class="w-1 h-10 rounded-full bg-brand shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Reyes Showing</div>
+            <div class="text-[11px] text-stone-500 truncate">2218 W Juniper · 1.5hr</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 shrink-0"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tomorrow -->
+    <div>
+      <div class="flex items-baseline gap-2 mb-2 px-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Tomorrow</span>
+        <span class="display text-lg font-bold text-stone-700 leading-none">Tue · May 13</span>
+      </div>
+      <div class="tile p-4 text-center text-[11px] text-stone-400">No events scheduled</div>
+    </div>
+
+    <!-- Wed -->
+    <div>
+      <div class="flex items-baseline gap-2 mb-2 px-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Wednesday</span>
+        <span class="display text-lg font-bold text-stone-700 leading-none">Wed · May 14</span>
+      </div>
+      <div class="tile">
+        <div class="flex items-center gap-3 p-3">
+          <div class="text-center w-12 shrink-0"><div class="text-xs font-bold text-brand-ink num">9:00</div><div class="text-[9px] text-stone-400 -mt-0.5">AM</div></div>
+          <div class="w-1 h-10 rounded-full bg-rose-500 shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Odom Inspection</div>
+            <div class="text-[11px] text-stone-500 truncate">6112 W Peoria · Contingency deadline</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 shrink-0"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sat / Sun -->
+    <div>
+      <div class="flex items-baseline gap-2 mb-2 px-1">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-stone-400">This Weekend</span>
+        <span class="display text-lg font-bold text-stone-700 leading-none">Sat – Sun</span>
+      </div>
+      <div class="tile divide-y divide-line/60 overflow-hidden">
+        <div class="flex items-center gap-3 p-3">
+          <div class="text-center w-12 shrink-0"><div class="text-[10px] text-stone-400 font-semibold">SAT 17</div><div class="text-xs font-bold text-brand-ink num">8:00</div></div>
+          <div class="w-1 h-10 rounded-full bg-amber-500 shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Open House</div>
+            <div class="text-[11px] text-stone-500 truncate">4721 E Camelback</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 shrink-0"></i>
+        </div>
+        <div class="flex items-center gap-3 p-3">
+          <div class="text-center w-12 shrink-0"><div class="text-[10px] text-stone-400 font-semibold">SUN 11</div><div class="text-xs font-bold text-brand-ink num">8:00</div></div>
+          <div class="w-1 h-10 rounded-full bg-amber-500 shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-brand-ink truncate">Open House</div>
+            <div class="text-[11px] text-stone-500 truncate">Patel · 2218 Juniper</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 shrink-0"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: COMMISSION FORECAST
+══════════════════════════════════════════ -->
+<section id="view-forecast" class="view space-y-5">
+  <div>
+    <h1 class="display text-2xl font-bold text-brand-ink">Commission Forecast</h1>
+    <p class="text-sm text-stone-500 mt-0.5">2026 YTD · Goal $80,000</p>
+  </div>
+
+  <!-- KPI strip -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="tile p-4">
+      <div class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 mb-2">Earned YTD</div>
+      <div class="num text-2xl font-bold text-brand-ink">$38,400</div>
+      <div class="mt-2 h-1.5 bg-surface-sunk rounded-full overflow-hidden"><div class="h-full bg-brand rounded-full" style="width:48%"></div></div>
+      <div class="text-[10px] text-stone-400 mt-1">48% of $80K goal</div>
+    </div>
+    <div class="tile p-4">
+      <div class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 mb-2">Pipeline (Expected)</div>
+      <div class="num text-2xl font-bold text-brand-mint">$52,350</div>
+      <div class="text-[11px] text-stone-500 mt-1">5 active deals</div>
+    </div>
+    <div class="tile p-4">
+      <div class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 mb-2">Avg. Commission</div>
+      <div class="num text-2xl font-bold text-brand-ink">$12,800</div>
+      <div class="text-[11px] text-stone-500 mt-1">per closed transaction</div>
+    </div>
+    <div class="tile p-4">
+      <div class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 mb-2">Projected EOY</div>
+      <div class="num text-2xl font-bold text-emerald-600">$76,400</div>
+      <div class="text-[11px] text-stone-400 mt-1">↓ $3.6K short of goal</div>
+    </div>
+  </div>
+
+  <!-- Bar chart + breakdown -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+    <!-- SVG bar chart -->
+    <div class="xl:col-span-2 tile p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-sm text-brand-ink">Monthly Commission — 2026</h2>
+        <div class="flex items-center gap-3 text-[10px] text-stone-500">
+          <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 bg-brand rounded-sm"></span>Actual</span>
+          <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 border-2 border-brand-mint rounded-sm"></span>Expected</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 560 200" class="w-full" style="overflow:visible">
+        <!-- Grid lines -->
+        <line x1="40" y1="0" x2="40" y2="160" stroke="#DDE3EE" stroke-width="1"/>
+        <line x1="40" y1="0" x2="560" y2="0" stroke="#DDE3EE" stroke-width="1"/>
+        <line x1="40" y1="40" x2="560" y2="40" stroke="#DDE3EE" stroke-width="1"/>
+        <line x1="40" y1="80" x2="560" y2="80" stroke="#DDE3EE" stroke-width="1"/>
+        <line x1="40" y1="120" x2="560" y2="120" stroke="#DDE3EE" stroke-width="1"/>
+        <line x1="40" y1="160" x2="560" y2="160" stroke="#DDE3EE" stroke-width="1"/>
+        <!-- Y labels -->
+        <text x="35" y="4" text-anchor="end" font-size="9" fill="#94a3b8">$20K</text>
+        <text x="35" y="44" text-anchor="end" font-size="9" fill="#94a3b8">$15K</text>
+        <text x="35" y="84" text-anchor="end" font-size="9" fill="#94a3b8">$10K</text>
+        <text x="35" y="124" text-anchor="end" font-size="9" fill="#94a3b8">$5K</text>
+        <text x="35" y="164" text-anchor="end" font-size="9" fill="#94a3b8">$0</text>
+        <!-- Bars: Jan-Dec. Scale: 160px = $20K, so $1K = 8px -->
+        <!-- Jan: actual $6.4K=51px, expected $8K=64px -->
+        <rect x="55" y="109" width="18" height="51" fill="#1B3A6B" rx="3"/>
+        <rect x="55" y="96" width="18" height="64" fill="none" stroke="#C9972C" stroke-width="2" rx="3"/>
+        <text x="64" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Jan</text>
+        <!-- Feb: actual $9.6K=77px -->
+        <rect x="103" y="83" width="18" height="77" fill="#1B3A6B" rx="3"/>
+        <rect x="103" y="80" width="18" height="80" fill="none" stroke="#C9972C" stroke-width="2" rx="3"/>
+        <text x="112" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Feb</text>
+        <!-- Mar: actual $7.2K=58px -->
+        <rect x="151" y="102" width="18" height="58" fill="#1B3A6B" rx="3"/>
+        <rect x="151" y="96" width="18" height="64" fill="none" stroke="#C9972C" stroke-width="2" rx="3"/>
+        <text x="160" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Mar</text>
+        <!-- Apr: actual $8K=64px -->
+        <rect x="199" y="96" width="18" height="64" fill="#1B3A6B" rx="3"/>
+        <rect x="199" y="88" width="18" height="72" fill="none" stroke="#C9972C" stroke-width="2" rx="3"/>
+        <text x="208" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Apr</text>
+        <!-- May (current): actual $7.2K so far, expected $13.5K -->
+        <rect x="247" y="102" width="18" height="58" fill="#1B3A6B" rx="3" opacity="0.7"/>
+        <rect x="247" y="52" width="18" height="108" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="256" y="178" text-anchor="middle" font-size="9" fill="#1B3A6B" font-weight="700">May</text>
+        <rect x="239" y="38" width="34" height="14" rx="4" fill="#1B3A6B"/>
+        <text x="256" y="48" text-anchor="middle" font-size="8" fill="#fff" font-weight="700">↑$13.5K</text>
+        <!-- Jun-Dec: projected only -->
+        <rect x="295" y="72" width="18" height="88" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="304" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Jun</text>
+        <rect x="343" y="80" width="18" height="80" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="352" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Jul</text>
+        <rect x="391" y="64" width="18" height="96" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="400" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Aug</text>
+        <rect x="439" y="72" width="18" height="88" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="448" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Sep</text>
+        <rect x="487" y="88" width="18" height="72" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="496" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Oct</text>
+        <rect x="535" y="80" width="18" height="80" fill="none" stroke="#C9972C" stroke-width="2" rx="3" stroke-dasharray="4 2"/>
+        <text x="544" y="178" text-anchor="middle" font-size="9" fill="#94a3b8">Nov</text>
+      </svg>
+    </div>
+
+    <!-- Pipeline breakdown -->
+    <div class="space-y-3">
+      <div class="tile p-4">
+        <h3 class="text-xs font-semibold text-brand-ink mb-3">Active Deal Commission</h3>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between py-1.5 border-b border-line/50">
+            <div><div class="text-xs font-semibold">Odom / Chandler</div><div class="text-[10px] text-stone-400">Close May 30</div></div>
+            <div class="text-right"><div class="num text-xs font-bold text-emerald-600">$17,340</div><div class="text-[10px] text-stone-400">3% buyer</div></div>
+          </div>
+          <div class="flex items-center justify-between py-1.5 border-b border-line/50">
+            <div><div class="text-xs font-semibold">Patel / Tempe listing</div><div class="text-[10px] text-stone-400">Est. Jun</div></div>
+            <div class="text-right"><div class="num text-xs font-bold text-brand-ink">$14,550</div><div class="text-[10px] text-stone-400">3% listing</div></div>
+          </div>
+          <div class="flex items-center justify-between py-1.5 border-b border-line/50">
+            <div><div class="text-xs font-semibold">Webb / Scottsdale</div><div class="text-[10px] text-stone-400">Est. Jun-Jul</div></div>
+            <div class="text-right"><div class="num text-xs font-bold text-brand-ink">$19,140</div><div class="text-[10px] text-stone-400">3% buyer</div></div>
+          </div>
+          <div class="flex items-center justify-between py-1.5">
+            <div><div class="text-xs font-semibold">Holloway / Luxury</div><div class="text-[10px] text-stone-400">Est. Jul</div></div>
+            <div class="text-right"><div class="num text-xs font-bold text-brand-ink">$36,000</div><div class="text-[10px] text-stone-400">3% buyer</div></div>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-line flex justify-between">
+          <span class="text-xs font-semibold text-stone-500">Pipeline Total</span>
+          <span class="num text-xs font-bold text-brand-mint">$87,030</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: ACTIVITY LOG
+══════════════════════════════════════════ -->
+<section id="view-activity" class="view space-y-4">
+  <div>
+    <h1 class="display text-2xl font-bold text-brand-ink">Activity Log</h1>
+    <p class="text-sm text-stone-500 mt-0.5">All client & transaction activity</p>
+  </div>
+
+  <!-- Filters -->
+  <div class="tile p-4 flex flex-wrap items-center gap-3">
+    <div class="flex items-center gap-2 bg-surface-soft border border-line rounded-lg px-3 py-1.5 flex-1 min-w-[180px] max-w-xs">
+      <i data-lucide="search" class="w-3.5 h-3.5 text-stone-400"></i>
+      <input type="text" placeholder="Search activity…" class="bg-transparent text-xs outline-none w-full placeholder-stone-400"/>
+    </div>
+    <select class="text-xs border border-line rounded-lg px-3 py-1.5 bg-surface-soft outline-none text-stone-600">
+      <option>All clients</option>
+      <option>Marcus Webb</option>
+      <option>Priya Patel</option>
+      <option>Ryan Odom</option>
+    </select>
+    <select class="text-xs border border-line rounded-lg px-3 py-1.5 bg-surface-soft outline-none text-stone-600">
+      <option>All actions</option>
+      <option>Offers</option>
+      <option>Showings</option>
+      <option>Notes</option>
+      <option>Status changes</option>
+    </select>
+  </div>
+
+  <!-- Action pills -->
+  <div class="flex items-center gap-2 flex-wrap">
+    <button class="pill ok cursor-pointer">All · 47</button>
+    <button class="pill cursor-pointer">Offers · 5</button>
+    <button class="pill cursor-pointer">Showings · 12</button>
+    <button class="pill cursor-pointer">Notes · 18</button>
+    <button class="pill cursor-pointer">Status · 8</button>
+    <button class="pill cursor-pointer">Contacts · 4</button>
+  </div>
+
+  <!-- Feed -->
+  <div class="tile overflow-hidden">
+    <!-- Today -->
+    <div class="px-5 py-2.5 bg-surface-soft border-b border-line text-xs font-bold text-stone-400 uppercase tracking-wider">Today — May 12</div>
+    <div class="divide-y divide-line/60">
+      <div class="flex items-start gap-3 px-5 py-3.5">
+        <div class="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-600"></i></div>
+        <div class="flex-1 text-xs">
+          <span class="font-semibold">JP Mananzan</span> submitted offer of <span class="font-semibold text-brand">$638,000</span> for <a class="text-brand font-semibold cursor-pointer" onclick="nav('property')">Marcus & Diana Webb</a> on 7823 E Camelback Dr
+          <div class="text-stone-400 mt-0.5">9:14am · Countered by seller at $658K</div>
+        </div>
+        <span class="pill warn shrink-0">Offer</span>
+      </div>
+      <div class="flex items-start gap-3 px-5 py-3.5">
+        <div class="w-7 h-7 rounded-full bg-brand-tint flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-brand"></i></div>
+        <div class="flex-1 text-xs">
+          <span class="font-semibold">JP Mananzan</span> scheduled showing for <span class="font-semibold text-brand">James Holloway</span> — 4721 E Camelback Rd @ 10am
+          <div class="text-stone-400 mt-0.5">8:30am</div>
+        </div>
+        <span class="pill info shrink-0">Showing</span>
+      </div>
+    </div>
+
+    <!-- Yesterday -->
+    <div class="px-5 py-2.5 bg-surface-soft border-b border-t border-line text-xs font-bold text-stone-400 uppercase tracking-wider">Yesterday — May 11</div>
+    <div class="divide-y divide-line/60">
+      <div class="flex items-start gap-3 px-5 py-3.5">
+        <div class="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="trending-down" class="w-3.5 h-3.5 text-violet-600"></i></div>
+        <div class="flex-1 text-xs">
+          <span class="font-semibold">JP Mananzan</span> updated price on <a class="text-brand font-semibold cursor-pointer" onclick="nav('property')">2218 W Juniper Ave</a> from $499,000 → <span class="font-semibold">$485,000</span>
+          <div class="text-stone-400 mt-0.5">2:15pm · Patel approved reduction</div>
+        </div>
+        <span class="pill shrink-0">Status</span>
+      </div>
+      <div class="flex items-start gap-3 px-5 py-3.5">
+        <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="user-check" class="w-3.5 h-3.5 text-emerald-600"></i></div>
+        <div class="flex-1 text-xs">
+          <span class="font-semibold">Linda Chen</span> added as new lead — Investor, budget $400K
+          <div class="text-stone-400 mt-0.5">10:02am · Source: Zillow inquiry</div>
+        </div>
+        <span class="pill ok shrink-0">New Lead</span>
+      </div>
+    </div>
+
+    <!-- May 10 -->
+    <div class="px-5 py-2.5 bg-surface-soft border-b border-t border-line text-xs font-bold text-stone-400 uppercase tracking-wider">May 10</div>
+    <div class="divide-y divide-line/60">
+      <div class="flex items-start gap-3 px-5 py-3.5">
+        <div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="clipboard-list" class="w-3.5 h-3.5 text-rose-600"></i></div>
+        <div class="flex-1 text-xs">
+          <span class="font-semibold">JP Mananzan</span> scheduled inspection for <span class="font-semibold text-brand">Ryan & Natasha Odom</span> — 6112 W Peoria Ave on May 14 @ 9am
+          <div class="text-stone-400 mt-0.5">4:30pm · Inspector: AZ Pro Home Inspection</div>
+        </div>
+        <span class="pill info shrink-0">Inspection</span>
+      </div>
+      <div class="flex items-start gap-3 px-5 py-3.5">
+        <div class="w-7 h-7 rounded-full bg-brand-tint flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="message-square" class="w-3.5 h-3.5 text-brand"></i></div>
+        <div class="flex-1 text-xs">
+          <span class="font-semibold">JP Mananzan</span> added note to <span class="font-semibold text-brand">James Holloway</span> — "Very interested in Camelback property. Wants to see two more options before deciding."
+          <div class="text-stone-400 mt-0.5">11:15am</div>
+        </div>
+        <span class="pill shrink-0">Note</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     VIEW: PLACEHOLDER (unbuilt views)
+══════════════════════════════════════════ -->
+<section id="view-placeholder" class="view">
+  <div class="flex flex-col items-center justify-center py-20 text-center">
+    <div class="w-14 h-14 rounded-2xl bg-brand-tint flex items-center justify-center mb-4">
+      <i data-lucide="construction" class="w-7 h-7 text-brand"></i>
+    </div>
+    <h2 class="display text-xl font-bold text-brand-ink mb-1">Coming Next</h2>
+    <p class="text-sm text-stone-500">This module is on the roadmap. Check back soon.</p>
+    <button onclick="nav('overview')" class="mt-6 text-xs font-semibold px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors">Back to Overview</button>
+  </div>
+</section>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /body flex -->
+
+<!-- BOTTOM TAB BAR (mobile) -->
+<nav class="lg:hidden flex items-center border-t border-line bg-white shrink-0 z-30">
+  <button class="btab active" data-view="overview" onclick="nav('overview')"><i data-lucide="layout-dashboard"></i>Home</button>
+  <button class="btab" data-view="leads" onclick="nav('leads')"><i data-lucide="users"></i>Leads</button>
+  <button class="btab" data-view="listings" onclick="nav('listings')"><i data-lucide="home"></i>Listings</button>
+  <button class="btab" data-view="calendar" onclick="nav('calendar')"><i data-lucide="calendar"></i>Calendar</button>
+  <button class="btab" data-view="forecast" onclick="nav('forecast')"><i data-lucide="trending-up"></i>Finance</button>
+</nav>
+
+<script>
+// ── Router ──────────────────────────────────────────────
+const viewMap = {
+  overview:'Overview', leads:'Leads & Clients', listings:'Listings',
+  property:'Property Detail', calendar:'Calendar', forecast:'Commission Forecast',
+  activity:'Activity Log', settings:'Settings'
+};
+const builtViews = new Set(['overview','leads','listings','property','calendar','forecast','activity']);
+
+function nav(view) {
+  // Hide all views
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  // Show target or placeholder
+  const el = document.getElementById('view-' + view);
+  if (el && builtViews.has(view)) {
+    el.classList.add('active');
+  } else {
+    document.getElementById('view-placeholder').classList.add('active');
+  }
+  // Update breadcrumb
+  const bc = document.getElementById('breadcrumb');
+  if (bc) bc.textContent = viewMap[view] || view;
+  // Update nav highlights
+  document.querySelectorAll('[data-view]').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.location.hash = view;
+}
+
+window.addEventListener('hashchange', () => {
+  const v = location.hash.replace('#','') || 'overview';
+  nav(viewMap[v] ? v : 'overview');
+});
+
+// Init
+const initView = location.hash.replace('#','') || 'overview';
+nav(viewMap[initView] ? initView : 'overview');
+
+// ── Sidebar collapse ─────────────────────────────────────
+(function(){
+  const sb = document.querySelector('.sidebar');
+  const btn = document.getElementById('sbToggle');
+  if (!sb || !btn) return;
+  const KEY = 'keystone:sb';
+  if (localStorage.getItem(KEY) === '1') sb.classList.add('is-collapsed');
+  btn.addEventListener('click', () => {
+    const c = sb.classList.toggle('is-collapsed');
+    localStorage.setItem(KEY, c ? '1' : '0');
+  });
+})();
+
+// ── Property tabs ────────────────────────────────────────
+document.querySelectorAll('#propTabs .client-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#propTabs .client-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.prop-panel').forEach(p => p.classList.add('hidden'));
+    const panel = document.getElementById(tab.dataset.tab);
+    if (panel) panel.classList.remove('hidden');
+  });
+});
+
+// ── Init Lucide icons ────────────────────────────────────
+lucide.createIcons();
+</script>
+</body>
+</html>
