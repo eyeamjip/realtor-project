@@ -40,12 +40,35 @@ tailwind.config = {
   .display{font-family:'Playfair Display',Georgia,serif;letter-spacing:-.01em}
   .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 
-  /* Sidebar */
-  .sidebar{width:232px;transition:width 220ms cubic-bezier(.4,0,.2,1);flex-shrink:0;position:relative}
+  /* Sidebar — desktop default */
+  .sidebar{width:232px;transition:width 220ms cubic-bezier(.4,0,.2,1);flex-shrink:0;position:relative;display:flex;flex-direction:column}
   .sidebar.is-collapsed{width:72px}
   .sidebar.is-collapsed .sb-hide{display:none!important}
   .sidebar.is-collapsed .nav-item{justify-content:center;padding-left:.5rem;padding-right:.5rem;position:relative}
   .sidebar.is-collapsed .nav-item[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#0F2447;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;z-index:60;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+
+  /* Sidebar — mobile slide-out drawer */
+  @media (max-width:1023px){
+    .sidebar{
+      position:fixed;
+      top:0; bottom:0; left:0;
+      width:280px!important;
+      transform:translateX(-100%);
+      transition:transform 240ms cubic-bezier(.4,0,.2,1);
+      z-index:50;
+      box-shadow:0 0 40px rgba(0,0,0,.18);
+    }
+    .sidebar.mobile-open{transform:translateX(0)}
+    .sb-toggle{display:none}
+  }
+  /* Mobile overlay (backdrop behind drawer) */
+  #mobileOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.4);
+    z-index:40;opacity:0;pointer-events:none;
+    transition:opacity 200ms;
+  }
+  #mobileOverlay.open{opacity:1;pointer-events:auto}
+  @media (min-width:1024px){#mobileOverlay{display:none!important}}
   .sb-toggle{position:absolute;right:-12px;top:91px;width:24px;height:24px;border-radius:999px;background:#fff;border:1px solid #DDE3EE;display:grid;place-items:center;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer;transition:background 120ms,border-color 120ms}
   .sb-toggle:hover{background:#F5F7FB;border-color:#1B3A6B}
   .sb-toggle svg{width:14px!important;height:14px!important;color:#64748b;transition:transform 220ms cubic-bezier(.4,0,.2,1)}
@@ -162,6 +185,9 @@ tailwind.config = {
 <!-- TOPBAR -->
 <header class="h-12 bg-white border-b border-line flex items-center px-4 gap-3 shrink-0 z-30">
   <div class="flex items-center gap-2 lg:hidden">
+    <button id="mobileMenuBtn" class="p-1.5 -ml-1 rounded-lg hover:bg-surface-sunk transition-colors" aria-label="Open menu">
+      <i data-lucide="menu" class="w-5 h-5 text-stone-600"></i>
+    </button>
     <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand-dark shadow-md flex items-center justify-center">
       <span class="text-white font-bold text-xl display leading-none">P</span>
     </div>
@@ -188,7 +214,7 @@ tailwind.config = {
 <div class="flex flex-1 overflow-hidden">
 
   <!-- SIDEBAR -->
-  <aside class="sidebar hidden lg:flex flex-col bg-white border-r border-line shrink-0 relative">
+  <aside class="sidebar bg-white border-r border-line shrink-0">
     <!-- Logo -->
     <div class="flex items-center gap-2.5 px-4 py-3.5 border-b border-line">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand-dark shadow-md flex items-center justify-center shrink-0">
@@ -199,6 +225,10 @@ tailwind.config = {
         <div class="text-[10px] text-stone-500 mt-1">Patricia Outlaw-Troutman</div>
         <div class="text-[9px] text-stone-400 uppercase tracking-wider">Realtor</div>
       </div>
+      <!-- Mobile-only close button -->
+      <button id="mobileDrawerClose" class="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-surface-sunk transition-colors" aria-label="Close menu">
+        <i data-lucide="x" class="w-4 h-4 text-stone-500"></i>
+      </button>
     </div>
     <!-- Toggle -->
     <button class="sb-toggle" id="sbToggle">
@@ -1481,6 +1511,9 @@ tailwind.config = {
   </main>
 </div><!-- /body flex -->
 
+<!-- Mobile drawer backdrop -->
+<div id="mobileOverlay"></div>
+
 <!-- BOTTOM TAB BAR (mobile) -->
 <nav class="lg:hidden flex items-center border-t border-line bg-white shrink-0 z-30">
   <button class="btab active" data-view="overview" onclick="nav('overview')"><i data-lucide="layout-dashboard"></i>Home</button>
@@ -1529,7 +1562,7 @@ window.addEventListener('hashchange', () => {
 const initView = location.hash.replace('#','') || 'overview';
 nav(viewMap[initView] ? initView : 'overview');
 
-// ── Sidebar collapse ─────────────────────────────────────
+// ── Sidebar collapse (desktop only) ──────────────────────
 (function(){
   const sb = document.querySelector('.sidebar');
   const btn = document.getElementById('sbToggle');
@@ -1540,6 +1573,24 @@ nav(viewMap[initView] ? initView : 'overview');
     const c = sb.classList.toggle('is-collapsed');
     localStorage.setItem(KEY, c ? '1' : '0');
   });
+})();
+
+// ── Mobile drawer (slide-out sidebar) ────────────────────
+(function(){
+  const sb = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobileOverlay');
+  const openBtn = document.getElementById('mobileMenuBtn');
+  const closeBtn = document.getElementById('mobileDrawerClose');
+  if (!sb || !overlay || !openBtn) return;
+  const open = () => { sb.classList.add('mobile-open'); overlay.classList.add('open'); document.body.style.overflow = 'hidden'; };
+  const close = () => { sb.classList.remove('mobile-open'); overlay.classList.remove('open'); document.body.style.overflow = ''; };
+  openBtn.addEventListener('click', open);
+  closeBtn?.addEventListener('click', close);
+  overlay.addEventListener('click', close);
+  // Auto-close when a nav item is tapped (navigation should dismiss drawer)
+  sb.querySelectorAll('a[data-view]').forEach(el => el.addEventListener('click', close));
+  // Auto-close on escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && sb.classList.contains('mobile-open')) close(); });
 })();
 
 // ── Property tabs ────────────────────────────────────────
