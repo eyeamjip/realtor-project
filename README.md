@@ -1,4 +1,4 @@
-# Outlaw Realty — Realtor CRM
+# Outlaw Realty (Prototype)
 
 Single-file HTML prototype of a CRM for Patty Outlaw-Troutman (Outlaw Realty). No build step — Tailwind / Lucide / Google Fonts via CDN.
 
